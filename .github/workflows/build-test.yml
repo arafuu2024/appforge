@@ -1,7 +1,7 @@
-name: Manual APK Build Test
+name: Real APK Build Test
 
 on:
-  workflow_dispatch:  # This allows you to click a "Run" button on GitHub.com
+  workflow_dispatch:
     inputs:
       website_url:
         description: 'Website URL to convert'
@@ -10,33 +10,41 @@ on:
 
 jobs:
   build-android:
-    runs-on: ubuntu-latest  # Comes with Java AND Android SDK pre-installed!
+    runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Java (Optional, GitHub already has it)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'  # Use the version your backend uses
+
+      - name: Install Backend Dependencies
+        run: |
+          cd "AppForge Backend"  # Navigate to your backend folder
+          npm install
+
+      - name: Setup Java (Required for Gradle)
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK (GitHub already has this too)
+      - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Run the Build Script
+      - name: Run the Real Build Script
         run: |
-          # This is where your backend code would normally run.
-          # Since we are testing, we just create a dummy file to prove it works.
-          echo "Building APK for ${{ inputs.website_url }}"
-          mkdir -p builds/test/output
-          echo "This is a test APK" > builds/test/output/app.apk
-          
-          # (In real life, your Node script would copy the android-template 
-          # and run gradlew here, but this proves the runner works!)
-          
-      - name: Upload APK Artifact (So you can download it)
+          cd "AppForge Backend"
+          node cli-build.js "${{ inputs.website_url }}"
+        env:
+          # Pass any environment variables your script needs
+          NODE_ENV: test
+
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: test-apk
-          path: builds/test/output/app.apk
+          name: built-apk
+          path: AppForge Backend/builds/*/output/*.apk  # Adjust path to where your script actually saves the APK
