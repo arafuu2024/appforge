@@ -138,20 +138,31 @@ async function run() {
                 await fs.writeFile(iconPath, Buffer.from(iconRes.data));
                 await replaceAppIcons(buildFolder, iconPath);
                 await fs.remove(iconPath);
+                console.log('✅ Icons replaced');
             } catch (e) {
-                console.warn('⚠️ Could not download icon, skipping:', e.message);
+                console.warn('⚠️ Icon processing skipped (build continues):', e.message);
+                // Don't fail the build for icon issues - use default
             }
+        } else {
+            console.log('ℹ️ No icon provided, using default');
         }
         
         // Step 7: Update splash screen
         console.log('\n🖼️ Step 7: Setting up splash screen...');
         if (project.splashLogo || project.splashBackground) {
-            await updateSplashScreen(
-                buildFolder,
-                project.splashLogo,
-                project.splashBackground,
-                config.loadingAnimation
-            );
+            try {
+                await updateSplashScreen(
+                    buildFolder,
+                    project.splashLogo,
+                    project.splashBackground,
+                    config.loadingAnimation
+                );
+                console.log('✅ Splash screen updated');
+            } catch (e) {
+                console.warn('⚠️ Splash screen skipped (build continues):', e.message);
+            }
+        } else {
+            console.log('ℹ️ No splash screen assets provided, using default');
         }
         
         // Step 8: Update permissions
@@ -174,6 +185,38 @@ async function run() {
         
         // Step 12: Build APK
         console.log('\n🔨 Step 12: Building APK with Gradle...');
+        
+        const androidFolder = path.join(buildFolder, 'android');
+        const gradlewPath = path.join(androidFolder, 'gradlew');
+        
+        // Make gradlew executable on Unix-like systems
+        if (process.platform !== 'win32') {
+            try {
+                fs.chmodSync(gradlewPath, 0o755);
+                console.log('✅ Made gradlew executable');
+            } catch (e) {
+                console.warn('⚠️ Could not chmod gradlew:', e.message);
+            }
+        }
+        
+        // Add --no-daemon for CI and set JAVA_HOME if not set
+        const buildEnv = { ...process.env };
+        if (!buildEnv.JAVA_HOME && process.platform === 'linux') {
+            // Common Java location on GitHub Actions
+            const possibleJavaHomes = [
+                '/usr/lib/jvm/temurin-17-jdk-amd64',
+                '/usr/lib/jvm/java-17-temurin',
+                process.env.JAVA_HOME_17_X64
+            ];
+            for (const p of possibleJavaHomes) {
+                if (p && await fs.pathExists(p)) {
+                    buildEnv.JAVA_HOME = p;
+                    console.log(`✅ Set JAVA_HOME to: ${p}`);
+                    break;
+                }
+            }
+        }
+        
         await buildAPK(buildFolder);
         
         // Verify APK exists
@@ -195,13 +238,21 @@ async function run() {
             completed_at: new Date().toISOString()
         });
         
-        // Output for GitHub Actions
+        // Output for GitHub Actions (modern $GITHUB_OUTPUT syntax)
         console.log('\n' + '='.repeat(50));
         console.log('🎉 BUILD COMPLETED SUCCESSFULLY');
         console.log('='.repeat(50));
-        console.log(`::set-output name=apk-path::${apkPath}`);
-        console.log(`::set-output name=r2-path::${r2FilePath}`);
-        console.log(`::set-output name=build-id::${buildId}`);
+        const ghOutput = process.env.GITHUB_OUTPUT;
+        if (ghOutput) {
+            fs.appendFileSync(ghOutput, `apk-path=${apkPath}\n`);
+            fs.appendFileSync(ghOutput, `r2-path=${r2FilePath}\n`);
+            fs.appendFileSync(ghOutput, `build-id=${buildId}\n`);
+        } else {
+            // Fallback for local testing
+            console.log(`apk-path: ${apkPath}`);
+            console.log(`r2-path: ${r2FilePath}`);
+            console.log(`build-id: ${buildId}`);
+        }
         console.log('='.repeat(50));
         
         // Cleanup local files to save space
@@ -221,8 +272,14 @@ async function run() {
         });
         
         // Set error output for GitHub Actions
-        console.log(`::set-output name=error::true`);
-        console.log(`::set-output name=error-message::${error.message}`);
+        const ghOutput = process.env.GITHUB_OUTPUT;
+        if (ghOutput) {
+            fs.appendFileSync(ghOutput, `error=true\n`);
+            fs.appendFileSync(ghOutput, `error-message=${error.message}\n`);
+        } else {
+            console.log(`error: true`);
+            console.log(`error-message: ${error.message}`);
+        }
         
         process.exit(1);
     }
