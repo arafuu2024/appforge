@@ -82,13 +82,13 @@ jobs:
           echo "=== WORKFLOW: Inputs being passed ==="
           echo "website_url: ${{ inputs.website_url }}"
           echo "build_id: ${{ inputs.build_id }}"
-          echo "config: ${{ inputs.config }}"
-          echo "config length: ${#GITHUB_INPUT_CONFIG}"
+          echo "config: $BUILD_CONFIG"
           echo "======================================"
           cd "AppForge Backend"
-          node cli-build.js "${{ inputs.website_url }}" "${{ inputs.build_id }}"
+          node cli-build.js "${{ inputs.website_url }}" "${{ inputs.build_id }}" "$BUILD_CONFIG"
         env:
           BUILD_CONFIG: ${{ inputs.config }}
+          GITHUB_INPUT_CONFIG: ${{ inputs.config }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
