@@ -1,3 +1,7 @@
+// ABSOLUTE FIRST LINE: nothing can crash before this prints
+console.log('CLI-BUILD STARTED pid=' + process.pid + ' argv=' + JSON.stringify(process.argv));
+console.log('ENV BUILD_CONFIG=' + (process.env.BUILD_CONFIG ? process.env.BUILD_CONFIG.length + ' chars' : 'EMPTY'));
+
 // cli-build.js - Entry point for GitHub Actions APK Build
 // This script runs the complete Android build pipeline in a cloud environment
 
