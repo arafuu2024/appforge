@@ -61,21 +61,38 @@ async function updateBuildStatus(buildId, status, metadata = {}) {
 
 async function run() {
     const websiteUrl = process.argv[2] || 'https://example.com';
-    const buildId = process.argv[3] || `github-${Date.now()}`;
-    const cliConfigArg = process.argv[4]; // full JSON config passed by the workflow
+
+    // Build ID: only used for folder/output naming, never for app identity
+    let buildId = process.argv[3];
+    if (!buildId || buildId.trim() === '') {
+        buildId = `build-${Date.now()}`;
+        console.log(`ℹ️ No build ID provided, generated: ${buildId}`);
+    }
     
+    // Sanitize buildId: alphanumeric plus dash/underscore only
+    const originalBuildId = buildId;
+    buildId = buildId.replace(/[^a-zA-Z0-9-_]/g, '');
+    if (buildId !== originalBuildId) {
+        console.log(`ℹ️ Sanitized build ID: "${originalBuildId}" -> "${buildId}"`);
+    }
+
     // Config precedence: CLI arg > BUILD_CONFIG env var > defaults
+    const cliConfigArg = process.argv[4];
     const configJson = cliConfigArg || process.env.BUILD_CONFIG || '{}';
     let config = {};
     try {
         config = JSON.parse(configJson);
     } catch (e) {
         console.warn('⚠️ Could not parse build config JSON, using defaults:', e.message);
+        console.warn('   Raw value received:', configJson.substring(0, 100));
     }
+    
+    // Package name: MUST be independent of build ID. Use static fallback.
+    const packageName = config.packageName || 'com.appforge.generated';
     
     const project = {
         appName: config.appName || 'My App',
-        packageName: config.packageName || `com.appforge.${Date.now()}`,
+        packageName: packageName,
         website: websiteUrl,
         versionName: config.versionName || '1.0.0',
         versionCode: parseInt(config.versionCode) || 1,
