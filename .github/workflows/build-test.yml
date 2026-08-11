@@ -80,7 +80,7 @@ jobs:
         id: build
         run: |
           cd "AppForge Backend"
-          node cli-build.js "${{ inputs.website_url }}" "${{ inputs.build_id }}" "${{ inputs.config }}"
+          node cli-build.js "${{ inputs.website_url }}" "${{ inputs.build_id }}"
         env:
           BUILD_CONFIG: ${{ inputs.config }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

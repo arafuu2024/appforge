@@ -76,15 +76,37 @@ async function run() {
         console.log(`ℹ️ Sanitized build ID: "${originalBuildId}" -> "${buildId}"`);
     }
 
-    // Config precedence: CLI arg > BUILD_CONFIG env var > defaults
-    const cliConfigArg = process.argv[4];
-    const configJson = cliConfigArg || process.env.BUILD_CONFIG || '{}';
+    // Config precedence: BUILD_CONFIG env var (base64 or raw JSON) > CLI arg > ''
+    
+    let configJson = process.env.BUILD_CONFIG || '';
+    
+    // Try base64 decode first (for GitHub Actions where quotes break CLI args)
+    if (configJson) {
+        try {
+            const decoded = Buffer.from(configJson, 'base64').toString('utf8');
+            if (decoded.startsWith('{')) {
+                configJson = decoded;
+                console.log('✅ Config loaded from base64 BUILD_CONFIG');
+            }
+        } catch (e) {
+            // Not base64, use as-is
+        }
+    }
+    
+    // Fallback to CLI arg if no env config
+    if (!configJson && process.argv[4]) {
+        configJson = process.argv[4];
+        console.log('✅ Config loaded from CLI argument');
+    }
+    
     let config = {};
     try {
-        config = JSON.parse(configJson);
+        config = JSON.parse(configJson || '{}');
+        console.log('✅ Config parsed successfully');
     } catch (e) {
-        console.warn('⚠️ Could not parse build config JSON, using defaults:', e.message);
-        console.warn('   Raw value received:', configJson.substring(0, 100));
+        console.error('❌ Config JSON parse failed:', e.message);
+        console.error('   Raw input:', configJson.substring(0, 100));
+        process.exit(1); // Don't continue with bad config
     }
     
     // Package name: MUST be independent of build ID. Use static fallback.
