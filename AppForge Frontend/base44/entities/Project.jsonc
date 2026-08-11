@@ -1,0 +1,190 @@
+{
+  "name": "Project",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "package_name": {
+      "type": "string"
+    },
+    "website_url": {
+      "type": "string"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "url",
+        "zip",
+        "github"
+      ],
+      "default": "url"
+    },
+    "app_icon": {
+      "type": "string"
+    },
+    "splash_logo": {
+      "type": "string"
+    },
+    "splash_background": {
+      "type": "string"
+    },
+    "feature_image": {
+      "type": "string"
+    },
+    "banner": {
+      "type": "string"
+    },
+    "primary_color": {
+      "type": "string",
+      "default": "#4F7CFF"
+    },
+    "accent_color": {
+      "type": "string",
+      "default": "#7C3AED"
+    },
+    "theme_mode": {
+      "type": "string",
+      "enum": [
+        "light",
+        "dark",
+        "system"
+      ],
+      "default": "system"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "building",
+        "completed",
+        "failed"
+      ],
+      "default": "draft"
+    },
+    "build_progress": {
+      "type": "number",
+      "default": 0
+    },
+    "build_type": {
+      "type": "string",
+      "enum": [
+        "apk",
+        "aab"
+      ],
+      "default": "apk"
+    },
+    "loading_animation": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "default": "material_circular"
+        },
+        "bg": {
+          "type": "string",
+          "default": "#0B1020"
+        },
+        "color": {
+          "type": "string",
+          "default": "#4F7CFF"
+        },
+        "size": {
+          "type": "number",
+          "default": 56
+        },
+        "speed": {
+          "type": "number",
+          "default": 1
+        },
+        "text": {
+          "type": "string",
+          "default": "Loading..."
+        },
+        "font": {
+          "type": "string",
+          "default": "Inter, sans-serif"
+        },
+        "fontSize": {
+          "type": "number",
+          "default": 14
+        },
+        "logoPosition": {
+          "type": "string",
+          "default": "top"
+        },
+        "fullscreen": {
+          "type": "boolean",
+          "default": true
+        },
+        "logo": {
+          "type": "string"
+        }
+      }
+    },
+    "version": {
+      "type": "string",
+      "default": "1.0.0"
+    },
+    "version_code": {
+      "type": "number",
+      "default": 1
+    },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "enable_firebase": {
+      "type": "boolean",
+      "default": false
+    },
+    "enable_ads": {
+      "type": "boolean",
+      "default": false
+    },
+    "enable_push_notifications": {
+      "type": "boolean",
+      "default": false
+    },
+    "enable_offline_mode": {
+      "type": "boolean",
+      "default": false
+    },
+    "enable_pull_to_refresh": {
+      "type": "boolean",
+      "default": true
+    },
+    "enable_file_download": {
+      "type": "boolean",
+      "default": true
+    },
+    "enable_file_upload": {
+      "type": "boolean",
+      "default": true
+    },
+    "enable_geolocation": {
+      "type": "boolean",
+      "default": false
+    },
+    "apk_url": {
+      "type": "string"
+    },
+    "apk_size": {
+      "type": "number",
+      "description": "APK file size in bytes, when reported by the backend"
+    },
+    "aab_url": {
+      "type": "string"
+    },
+    "downloads": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "name",
+    "website_url"
+  ]
+}

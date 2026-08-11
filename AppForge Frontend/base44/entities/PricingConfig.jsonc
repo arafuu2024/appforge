@@ -1,0 +1,47 @@
+{
+  "name": "PricingConfig",
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string"
+    },
+    "value": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "checkout",
+        "subscription",
+        "pricing_page",
+        "general"
+      ],
+      "default": "general"
+    },
+    "updated_by_email": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "key",
+    "value"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

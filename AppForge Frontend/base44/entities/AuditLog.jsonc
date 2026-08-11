@@ -1,0 +1,48 @@
+{
+  "name": "AuditLog",
+  "type": "object",
+  "properties": {
+    "action": {
+      "type": "string",
+      "description": "What action was performed (e.g. user.suspend, project.delete, payment.approve)"
+    },
+    "actor_email": {
+      "type": "string",
+      "description": "Email of the user who performed the action"
+    },
+    "target_type": {
+      "type": "string",
+      "description": "Type of entity affected (user/project/payment/setting/etc)"
+    },
+    "target_id": {
+      "type": "string",
+      "description": "ID of the affected record"
+    },
+    "details": {
+      "type": "string",
+      "description": "Additional context about the action"
+    }
+  },
+  "required": [
+    "action",
+    "actor_email"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {},
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

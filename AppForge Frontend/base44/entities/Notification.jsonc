@@ -1,0 +1,40 @@
+{
+  "name": "Notification",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "build",
+        "payment",
+        "system",
+        "welcome"
+      ],
+      "default": "system"
+    },
+    "read": {
+      "type": "boolean",
+      "default": false
+    },
+    "project_id": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Target user id; leave empty for system-wide broadcasts"
+    },
+    "icon": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title",
+    "message"
+  ]
+}

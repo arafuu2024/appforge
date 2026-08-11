@@ -1,0 +1,72 @@
+{
+  "name": "Currency",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string",
+      "description": "ISO currency code (USD, BDT, EUR)"
+    },
+    "symbol": {
+      "type": "string",
+      "description": "Currency symbol ($, \u09f3, \u20ac)"
+    },
+    "name": {
+      "type": "string",
+      "description": "Display name (US Dollar, Bangladeshi Taka)"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false
+    },
+    "order": {
+      "type": "number",
+      "default": 0
+    },
+    "decimals": {
+      "type": "number",
+      "default": 2
+    },
+    "position": {
+      "type": "string",
+      "enum": [
+        "before",
+        "after"
+      ],
+      "default": "before"
+    },
+    "countries": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Country codes for regional pricing"
+    }
+  },
+  "required": [
+    "code",
+    "symbol",
+    "name"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

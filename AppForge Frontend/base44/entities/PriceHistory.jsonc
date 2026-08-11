@@ -1,0 +1,60 @@
+{
+  "name": "PriceHistory",
+  "type": "object",
+  "properties": {
+    "plan_id": {
+      "type": "string"
+    },
+    "plan_name": {
+      "type": "string"
+    },
+    "billing_period": {
+      "type": "string"
+    },
+    "currency_code": {
+      "type": "string"
+    },
+    "old_price": {
+      "type": "number"
+    },
+    "new_price": {
+      "type": "number"
+    },
+    "changed_by_email": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "rolled_back": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "plan_id",
+    "plan_name"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

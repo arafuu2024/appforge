@@ -1,0 +1,43 @@
+{
+  "name": "Template",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "business",
+        "ecommerce",
+        "blog",
+        "portfolio",
+        "social",
+        "news",
+        "education"
+      ],
+      "default": "business"
+    },
+    "preview_image": {
+      "type": "string"
+    },
+    "website_url": {
+      "type": "string"
+    },
+    "is_premium": {
+      "type": "boolean",
+      "default": false
+    },
+    "uses": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "name",
+    "description"
+  ]
+}

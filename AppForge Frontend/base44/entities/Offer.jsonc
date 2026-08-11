@@ -1,0 +1,127 @@
+{
+  "name": "Offer",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "percentage",
+        "fixed",
+        "special_price",
+        "bogo",
+        "upgrade",
+        "renewal",
+        "coupon",
+        "automatic"
+      ],
+      "default": "percentage"
+    },
+    "value": {
+      "type": "number",
+      "description": "Discount value (percentage or fixed amount)"
+    },
+    "coupon_code": {
+      "type": "string",
+      "description": "Coupon code if type is coupon"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "paused",
+        "expired",
+        "scheduled"
+      ],
+      "default": "active"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "timezone": {
+      "type": "string",
+      "default": "UTC"
+    },
+    "banner_text": {
+      "type": "string"
+    },
+    "banner_color": {
+      "type": "string",
+      "default": "#4F7CFF"
+    },
+    "max_uses": {
+      "type": "number",
+      "default": 0,
+      "description": "0 = unlimited"
+    },
+    "per_user_limit": {
+      "type": "number",
+      "default": 0
+    },
+    "used_count": {
+      "type": "number",
+      "default": 0
+    },
+    "applicable_plans": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "applicable_currencies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "applicable_countries": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "has_countdown": {
+      "type": "boolean",
+      "default": false
+    },
+    "animation_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "created_by_email": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "type"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

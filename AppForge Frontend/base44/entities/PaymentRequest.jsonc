@@ -1,0 +1,56 @@
+{
+  "name": "PaymentRequest",
+  "type": "object",
+  "properties": {
+    "full_name": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "plan": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": [
+        "bkash",
+        "nagad",
+        "rocket"
+      ],
+      "default": "bkash"
+    },
+    "transaction_id": {
+      "type": "string"
+    },
+    "sender_mobile": {
+      "type": "string"
+    },
+    "note": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "default": "pending"
+    },
+    "rejection_reason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "full_name",
+    "email",
+    "plan",
+    "payment_method",
+    "transaction_id",
+    "sender_mobile"
+  ]
+}

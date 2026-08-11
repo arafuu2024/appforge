@@ -1,0 +1,15 @@
+{
+  "watch": [
+    "controllers",
+    "routes",
+    "services",
+    "utils",
+    "server.js"
+  ],
+  "ignore": [
+    "builds/**",
+    "android-template/**",
+    "node_modules/**"
+  ],
+  "ext": "js,json"
+}

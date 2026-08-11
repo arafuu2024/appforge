@@ -1,0 +1,70 @@
+{
+  "name": "BuildHistory",
+  "type": "object",
+  "properties": {
+    "build_id": {
+      "type": "string",
+      "description": "Unique build identifier returned by the backend"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Owner of this build (mirrors created_by_id for easy filtering)"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "The Project this build belongs to"
+    },
+    "app_name": {
+      "type": "string"
+    },
+    "package_name": {
+      "type": "string"
+    },
+    "website_url": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "apk_url": {
+      "type": "string",
+      "description": "Download URL returned by the backend for this build"
+    },
+    "build_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "build_duration": {
+      "type": "number",
+      "description": "Build duration in seconds"
+    },
+    "build_status": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "failed"
+      ],
+      "default": "completed"
+    },
+    "build_logs": {
+      "type": "string",
+      "description": "Concatenated build log lines for this build"
+    }
+  },
+  "required": [
+    "app_name",
+    "build_status"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

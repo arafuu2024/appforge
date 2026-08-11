@@ -1,0 +1,101 @@
+{
+  "name": "Plan",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "internal_id": {
+      "type": "string",
+      "description": "Unique plan identifier (e.g. starter, professional)"
+    },
+    "description": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "archived",
+        "draft"
+      ],
+      "default": "active"
+    },
+    "visibility": {
+      "type": "string",
+      "enum": [
+        "visible",
+        "hidden",
+        "featured",
+        "popular",
+        "recommended",
+        "coming_soon",
+        "limited_offer",
+        "beta"
+      ],
+      "default": "visible"
+    },
+    "order": {
+      "type": "number",
+      "default": 0
+    },
+    "trial_days": {
+      "type": "number",
+      "default": 0
+    },
+    "billing_periods": {
+      "type": "object",
+      "description": "Map of billing period to { enabled, prices: { CODE: amount } }"
+    },
+    "features": {
+      "type": "object",
+      "description": "Map of feature key to value (number, string, or boolean)"
+    },
+    "feature_list": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Display labels for the pricing card"
+    },
+    "button_text": {
+      "type": "string",
+      "default": "Get Started"
+    },
+    "ribbon_text": {
+      "type": "string"
+    },
+    "badge_text": {
+      "type": "string"
+    },
+    "accent_color": {
+      "type": "string",
+      "default": "#4F7CFF"
+    },
+    "created_by_email": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "internal_id"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

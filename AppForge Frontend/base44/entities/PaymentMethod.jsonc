@@ -1,0 +1,58 @@
+{
+  "name": "PaymentMethod",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "currency_code": {
+      "type": "string",
+      "description": "Which currency this method applies to"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "order": {
+      "type": "number",
+      "default": 0
+    },
+    "instructions": {
+      "type": "string"
+    },
+    "qr_code_url": {
+      "type": "string"
+    },
+    "logo_url": {
+      "type": "string"
+    },
+    "account_details": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "currency_code"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
