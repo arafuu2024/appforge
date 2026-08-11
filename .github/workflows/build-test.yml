@@ -13,38 +13,42 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      # Use v4 (still fine, but we'll upgrade these below)
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # Upgrade to Node.js 22 (instead of 20) to avoid deprecation
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'  # Use the version your backend uses
+          node-version: '22'  # CHANGED: Use 22 instead of 18
 
       - name: Install Backend Dependencies
         run: |
-          cd "AppForge Backend"  # Navigate to your backend folder
+          cd "AppForge Backend"
           npm install
 
-      - name: Setup Java (Required for Gradle)
-        uses: actions/setup-java@v4
+      # Upgrade to v5 (fixes the deprecation warning)
+      - name: Setup Java
+        uses: actions/setup-java@v5  # CHANGED: v4 → v5
         with:
           distribution: 'temurin'
           java-version: '17'
 
+      # This action doesn't have a newer version, but we can use a different approach
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      # Run your actual build script
       - name: Run the Real Build Script
         run: |
           cd "AppForge Backend"
           node cli-build.js "${{ inputs.website_url }}"
         env:
-          # Pass any environment variables your script needs
           NODE_ENV: test
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: built-apk
-          path: AppForge Backend/builds/*/output/*.apk  # Adjust path to where your script actually saves the APK
+          path: AppForge Backend/builds/*/output/*.apk
