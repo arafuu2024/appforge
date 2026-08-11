@@ -60,57 +60,96 @@ async function updateBuildStatus(buildId, status, metadata = {}) {
 }
 
 async function run() {
+    // ============================
+    // DIAGNOSTIC: Raw inputs
+    // ============================
+    console.log('\n' + '='.repeat(60));
+    console.log('DIAGNOSTIC: Raw process.argv');
+    console.log('='.repeat(60));
+    process.argv.forEach((arg, i) => {
+        console.log(`  argv[${i}]: ${JSON.stringify(arg)}`);
+    });
+    console.log('='.repeat(60) + '\n');
+
     const websiteUrl = process.argv[2] || 'https://example.com';
 
     // Build ID: only used for folder/output naming, never for app identity
     let buildId = process.argv[3];
+    console.log(`DIAGNOSTIC: argv[3] raw value: ${JSON.stringify(buildId)}`);
+    
     if (!buildId || buildId.trim() === '') {
         buildId = `build-${Date.now()}`;
-        console.log(`ℹ️ No build ID provided, generated: ${buildId}`);
+        console.log(`DIAGNOSTIC: No valid build ID, generated fallback: ${buildId}`);
     }
     
     // Sanitize buildId: alphanumeric plus dash/underscore only
     const originalBuildId = buildId;
     buildId = buildId.replace(/[^a-zA-Z0-9-_]/g, '');
     if (buildId !== originalBuildId) {
-        console.log(`ℹ️ Sanitized build ID: "${originalBuildId}" -> "${buildId}"`);
+        console.log(`DIAGNOSTIC: Sanitized "${originalBuildId}" -> "${buildId}"`);
     }
 
     // Config precedence: BUILD_CONFIG env var (base64 or raw JSON) > CLI arg > ''
+    console.log('\n' + '='.repeat(60));
+    console.log('DIAGNOSTIC: BUILD_CONFIG env var');
+    console.log('='.repeat(60));
+    const envConfig = process.env.BUILD_CONFIG;
+    console.log(`BUILD_CONFIG exists: ${!!envConfig}`);
+    console.log(`BUILD_CONFIG length: ${envConfig ? envConfig.length : 0}`);
+    console.log(`BUILD_CONFIG preview (first 200 chars): ${envConfig ? envConfig.substring(0, 200) : 'null'}`);
+    console.log('='.repeat(60) + '\n');
     
-    let configJson = process.env.BUILD_CONFIG || '';
+    let configJson = envConfig || '';
     
     // Try base64 decode first (for GitHub Actions where quotes break CLI args)
     if (configJson) {
         try {
             const decoded = Buffer.from(configJson, 'base64').toString('utf8');
             if (decoded.startsWith('{')) {
+                console.log('DIAGNOSTIC: BUILD_CONFIG appears to be base64-encoded, decoded successfully');
                 configJson = decoded;
-                console.log('✅ Config loaded from base64 BUILD_CONFIG');
+            } else {
+                console.log('DIAGNOSTIC: BUILD_CONFIG appears to be raw JSON');
             }
         } catch (e) {
-            // Not base64, use as-is
+            console.log('DIAGNOSTIC: BUILD_CONFIG is not base64, treating as raw JSON');
         }
     }
     
     // Fallback to CLI arg if no env config
     if (!configJson && process.argv[4]) {
         configJson = process.argv[4];
-        console.log('✅ Config loaded from CLI argument');
+        console.log('DIAGNOSTIC: Using CLI argument argv[4] as config');
+        console.log(`   argv[4] value: ${JSON.stringify(process.argv[4])}`);
     }
     
+    console.log('\n' + '='.repeat(60));
+    console.log('DIAGNOSTIC: Final parsed config');
+    console.log('='.repeat(60));
+    console.log(`configJson length: ${configJson.length}`);
+    console.log(`configJson preview: ${configJson.substring(0, 200)}`);
+    console.log('='.repeat(60) + '\n');
+
     let config = {};
     try {
         config = JSON.parse(configJson || '{}');
-        console.log('✅ Config parsed successfully');
+        console.log('DIAGNOSTIC: Config parsed successfully');
     } catch (e) {
-        console.error('❌ Config JSON parse failed:', e.message);
+        console.error('DIAGNOSTIC: Config JSON parse failed:', e.message);
         console.error('   Raw input:', configJson.substring(0, 100));
         process.exit(1); // Don't continue with bad config
     }
-    
+
     // Package name: MUST be independent of build ID. Use static fallback.
     const packageName = config.packageName || 'com.appforge.generated';
+    console.log('\n' + '='.repeat(60));
+    console.log('DIAGNOSTIC: Final resolved values');
+    console.log('='.repeat(60));
+    console.log(`  buildId: "${buildId}"`);
+    console.log(`  packageName: "${packageName}"`);
+    console.log(`  websiteUrl: "${websiteUrl}"`);
+    console.log(`  appName: "${config.appName || 'My App'}"`);
+    console.log('='.repeat(60) + '\n');
     
     const project = {
         appName: config.appName || 'My App',

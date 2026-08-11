@@ -79,6 +79,12 @@ jobs:
       - name: Run Build Script
         id: build
         run: |
+          echo "=== WORKFLOW: Inputs being passed ==="
+          echo "website_url: ${{ inputs.website_url }}"
+          echo "build_id: ${{ inputs.build_id }}"
+          echo "config: ${{ inputs.config }}"
+          echo "config length: ${#GITHUB_INPUT_CONFIG}"
+          echo "======================================"
           cd "AppForge Backend"
           node cli-build.js "${{ inputs.website_url }}" "${{ inputs.build_id }}"
         env:
