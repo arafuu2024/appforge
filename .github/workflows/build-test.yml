@@ -1,4 +1,4 @@
-name: Real APK Build Test
+name: Production APK Build
 
 on:
   workflow_dispatch:
@@ -6,49 +6,114 @@ on:
       website_url:
         description: 'Website URL to convert'
         required: true
-        default: 'https://example.com'
+      build_id:
+        description: 'Unique Build ID'
+        required: true
+      config:
+        description: 'JSON build configuration'
+        required: false
+        default: '{}'
 
 jobs:
   build-android:
     runs-on: ubuntu-latest
+    environment: production
     
     steps:
-      # Use v4 (still fine, but we'll upgrade these below)
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Upgrade to Node.js 22 (instead of 20) to avoid deprecation
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'  # CHANGED: Use 22 instead of 18
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: AppForge Backend/package-lock.json
 
       - name: Install Backend Dependencies
         run: |
           cd "AppForge Backend"
-          npm install
+          npm install --omit=dev
+        env:
+          NODE_ENV: production
 
-      # Upgrade to v5 (fixes the deprecation warning)
-      - name: Setup Java
-        uses: actions/setup-java@v5  # CHANGED: v4 → v5
+      - name: Setup Java JDK
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
+          cache: 'gradle'
 
-      # This action doesn't have a newer version, but we can use a different approach
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.5'
+
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      # Run your actual build script
-      - name: Run the Real Build Script
+      - name: Accept Android Licenses
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
+      - name: Install Android Build Tools
+        run: |
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;34.0.0"
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle
+
+      - name: Verify SDK Setup
+        run: |
+          echo "Java version:"
+          java -version
+          echo "Gradle version:"
+          gradle --version
+          echo "Android SDK location:"
+          ls -la $ANDROID_HOME
+
+      - name: Run Build Script
+        id: build
         run: |
           cd "AppForge Backend"
-          node cli-build.js "${{ inputs.website_url }}"
+          node cli-build.js "${{ inputs.website_url }}" "${{ inputs.build_id }}" "${{ inputs.config }}"
         env:
-          NODE_ENV: test
+          BUILD_CONFIG: ${{ inputs.config }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          NODE_ENV: production
 
-      - name: Upload APK Artifact
+      - name: Upload APK Asset
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: built-apk
-          path: AppForge Backend/builds/*/output/*.apk
+          name: app-${{ inputs.build_id }}.apk
+          path: "AppForge Backend/builds/${{ inputs.build_id }}/android/app/build/outputs/apk/release/app-release-unsigned.apk"
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -rf "AppForge Backend/builds/${{ inputs.build_id }}" || true
+
+      - name: Build Summary
+        if: always()
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Build ID: ${{ inputs.build_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Website: ${{ inputs.website_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY

@@ -1,157 +1,125 @@
-const fs = require("fs-extra");
-const path = require("path");
 const { v4: uuidv4 } = require("uuid");
-
-const { updateTemplate } = require("../services/template.service");
-const { updateAppName } = require("../services/manifest.service");
-const { updateVersion } = require("../services/version.service");
-const { replaceAppIcons } = require("../services/icon.service");
-const { updateSplashScreen } = require("../services/splash.service");
-const { updatePackage } = require("../services/package.service");
-const { updatePermissions } = require("../services/permissions.service");
-const { updateTheme } = require("../services/theme.service");
-const { setupAdMob } = require("../services/admob.service");
-const { updateWebViewFeatures } = require("../services/webview.service");
-const { buildAPK } = require("../services/apk.service");
-const { uploadBuild } = require("../services/r2.service");
 
 async function buildProject(req, res) {
     const buildId = uuidv4();
-    const buildFolder = path.join(__dirname, "..", "builds", buildId);
-    const templateFolder = path.join(__dirname, "..", "android-template");
 
     try {
-        console.log(`🚀 Starting build ${buildId}`);
+        console.log(`🚀 Triggering GitHub Actions Build: ${buildId}`);
 
-        // Ensure builds directory exists
-        await fs.ensureDir(path.join(__dirname, "..", "builds"));
-
-        // Copy android template to build folder with android subdirectory
-        console.log("📁 Copying Android template...");
-        await fs.ensureDir(buildFolder);
-        await fs.copy(templateFolder, path.join(buildFolder, "android"));
-
-        // Extract project data from request
+        // Parse project data
         const project = JSON.parse(req.body.project);
-        const iconPath = req.file ? req.file.path : null;
+        const userEmail = req.body.user_email || project.user_email || "anonymous@example.com";
 
-        console.log("📋 Project data:", {
-            appName: project.appName,
-            packageName: project.packageName,
+        // Add defaults and prepare config
+        const buildConfig = {
+            appName: project.appName || 'My App',
+            packageName: project.packageName || `com.appforge.${Date.now()}`,
             website: project.website,
-            versionName: project.versionName,
-            versionCode: project.versionCode,
-            themeMode: project.themeMode,
-            primaryColor: project.primaryColor,
-            accentColor: project.accentColor,
-            hasAdMob: !!project.admobConfig,
-            permissions: project.permissions,
-            hasIcon: !!iconPath,
-            hasSplashLogo: !!project.splashLogo,
-            hasSplashBackground: !!project.splashBackground,
-            webviewFeatures: {
-                fileDownload: project.enableFileDownload,
-                fileUpload: project.enableFileUpload,
-                geolocation: project.enableGeolocation,
-                offlineMode: project.enableOfflineMode,
-                pullToRefresh: project.enablePullToRefresh,
-            }
+            versionName: project.versionName || '1.0.0',
+            versionCode: project.versionCode || 1,
+            themeMode: project.themeMode || 'light',
+            primaryColor: project.primaryColor || '#4F7CFF',
+            accentColor: project.accentColor || '#7C3AED',
+            permissions: project.permissions || ['INTERNET'],
+            admobConfig: project.admobConfig || null,
+            splashLogo: project.splashLogo || null,
+            splashBackground: project.splashBackground || null,
+            user_email: userEmail,
+            iconUrl: project.iconUrl || null,
+            enableFileDownload: project.enableFileDownload !== false,
+            enableFileUpload: project.enableFileUpload !== false,
+            enableGeolocation: project.enableGeolocation !== false,
+            enableOfflineMode: project.enableOfflineMode !== false,
+            enablePullToRefresh: project.enablePullToRefresh !== false,
+            loadingAnimation: project.loadingAnimation || null
+        };
+
+        // Log config (without sensitive data)
+        console.log('📋 Build config:', {
+            appName: buildConfig.appName,
+            packageName: buildConfig.packageName,
+            website: buildConfig.website,
+            version: buildConfig.versionName,
+            user_email: buildConfig.user_email
         });
 
-        // 1. Update package name (must be first as it renames folders)
-        await updatePackage(buildFolder, project.packageName);
+        // Option A: Trigger GitHub Actions (Production - Recommended)
+        const ghRepo = process.env.GITHUB_REPO || "arafuu2024/appforfe";
+        const ghWorkflow = process.env.GITHUB_WORKFLOW_FILE || "build-test.yml";
+        const ghRef = process.env.GITHUB_BRANCH || "main";
 
-        // 2. Update template (website URL)
-        await updateTemplate(buildFolder, project);
+        if (process.env.GITHUB_PAT) {
+            try {
+                const triggerResponse = await fetch(
+                    `https://api.github.com/repos/${ghRepo}/actions/workflows/${ghWorkflow}/dispatches`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `token ${process.env.GITHUB_PAT}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            ref: ghRef,
+                            inputs: {
+                                website_url: buildConfig.website,
+                                build_id: buildId,
+                                config: JSON.stringify(buildConfig)
+                            }
+                        })
+                    }
+                );
 
-        // 3. Update app name
-        await updateAppName(buildFolder, project);
+                if (!triggerResponse.ok) {
+                    const errorText = await triggerResponse.text();
+                    throw new Error(`GitHub API error: ${triggerResponse.status} - ${errorText}`);
+                }
 
-        // 4. Update version
-        await updateVersion(buildFolder, project.versionName, project.versionCode);
+                console.log(`✅ GitHub Actions build triggered: ${buildId}`);
 
-        // 5. Replace app icons
-        if (iconPath) {
-            await replaceAppIcons(buildFolder, iconPath);
+                return res.json({
+                    success: true,
+                    buildId,
+                    message: "Build triggered on GitHub Actions",
+                    status: "processing",
+                    trackingUrl: `/build/${buildId}`, // Supabase row ID
+                    buildConfig: {
+                        estimatedTime: "5-10 minutes",
+                        platform: "GitHub Actions"
+                    }
+                });
+
+            } catch (githubError) {
+                console.error('GitHub Actions trigger failed:', githubError);
+                console.log('Falling back to local build...');
+                // Fall through to local build
+            }
         }
 
-        // 6. Update splash screen
-        if (project.splashLogo || project.splashBackground) {
-            await updateSplashScreen(
-                buildFolder,
-                project.splashLogo,
-                project.splashBackground,
-                project.loadingAnimation
-            );
-        }
-
-        // 7. Update permissions
-        if (project.permissions && project.permissions.length > 0) {
-            await updatePermissions(buildFolder, project.permissions);
-        }
-
-        // 8. Update theme
-        if (project.themeMode && project.primaryColor && project.accentColor) {
-            await updateTheme(
-                buildFolder,
-                project.themeMode,
-                project.primaryColor,
-                project.accentColor
-            );
-        }
-
-        // 9. Setup AdMob if configured
-        if (project.admobConfig && project.admobConfig.appId) {
-            await setupAdMob(buildFolder, project.admobConfig, project.packageName);
-        }
-
-        // 10. Update WebView features
-        await updateWebViewFeatures(buildFolder, project);
-
-        // 11. Build the APK
-        console.log("🔨 Building APK...");
-        await buildAPK(buildFolder);
-
-        // 12. Upload to R2 (Cloudflare) for persistent storage
-        const outputApk = path.join(buildFolder, "output", "app.apk");
-        const exists = await fs.pathExists(outputApk);
+        // Option B: Local Build (Development - Deprecated)
+        console.log('🔨 Starting local build (development mode)...');
+        console.log('⚠️ WARNING: Local builds require Java JDK and Android SDK');
         
-        if (!exists) {
-            throw new Error("APK was not generated");
-        }
-
-        console.log("☁️ Uploading to Cloudflare R2...");
-        let r2FilePath = null;
-        try {
-            r2FilePath = await uploadBuild(buildId, outputApk, "app.apk");
-            console.log(`✅ Uploaded to R2: ${r2FilePath}`);
-        } catch (r2Error) {
-            console.error("⚠️ R2 upload failed:", r2Error.message);
-            // Don't fail the build if R2 upload fails - local file is still available
-        }
-
-        console.log(`✅ Build ${buildId} completed successfully`);
-
-        // Return build ID for download
-        return res.json({
-            success: true,
+        // Set a timeout for the entire build process
+        const buildTimeout = 20 * 60 * 1000; // 20 minutes
+        req.setTimeout(buildTimeout);
+        
+        // Local build implementation would go here
+        // For now, return a helpful error
+        return res.status(503).json({
+            success: false,
             buildId,
-            message: "Build completed successfully",
-            downloadUrl: `/download/${buildId}`,
-            r2FilePath
+            message: "Local builds are disabled. Please configure GitHub Actions or contact administrator.",
+            instructions: "Set GITHUB_PAT and GITHUB_ACTIONS=true in .env to enable cloud builds"
         });
 
     } catch (error) {
-        console.error(`❌ Build ${buildId} failed:`, error);
-        
-        // Cleanup on failure
-        await fs.remove(buildFolder).catch(() => {});
+        console.error(`❌ Build trigger failed: ${buildId}`, error);
         
         return res.status(500).json({
             success: false,
-            buildId,
-            message: error.message || "Build failed",
-            error: error.stack
+            error: "Failed to initiate build",
+            details: error.message
         });
     }
 }

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { base44 } from "@/api/base44Client";
-import { createBuildRecord } from "@/lib/buildService";
+import { createBuildRecord, updateBuildStatus as updateBuildRecord, getBuild as getBuildFromSupabase } from "@/lib/buildService";
 import { Button } from "@/components/ui/button";
 import { Check, Loader2, Download, RotateCcw, Share2, Trash2, AlertCircle, Copy } from "lucide-react";
 import confetti from "canvas-confetti";
@@ -52,78 +52,121 @@ export default function BuildProgress() {
   const logsRef = useRef([]);
   useEffect(() => { logsRef.current = logs; }, [logs]);
 
-  // Real build: sends ONE request to the backend and drives cosmetic progress
-  // messages while waiting. The downloadUrl comes only from the backend response.
+  // Cloud build flow: trigger GitHub Actions via the backend (returns immediately),
+  // then poll Supabase every 5s until the build row flips to completed/failed.
   const runBuild = async (p) => {
     setArtifactError(false);
     const startedAt = Date.now();
     setLogs([log("Preparing project...")]);
 
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+    const POLL_MS = 5000;
+    const MAX_WAIT_MS = 30 * 60 * 1000; // give up polling after 30 min
+
+    // Cosmetic step/progress driver while the cloud build runs
     const stepTimer = setInterval(() => {
       setCurrentStep((s) => {
         const next = Math.min(s + 1, BUILD_STEPS.length - 2);
         if (next > s) setLogs((prev) => [...prev, log(`${BUILD_STEPS[next]}...`)]);
         return next;
       });
-      setProgress((pr) => Math.min(pr + 14, 92));
-    }, 1500);
+      setProgress((pr) => Math.min(pr + 3, 92)); // slow creep; cloud builds take minutes
+    }, POLL_MS);
+
+    let pollTimer = null;
+    const stopTimers = () => {
+      clearInterval(stepTimer);
+      if (pollTimer) clearInterval(pollTimer);
+    };
+
+    const onFailed = (message, failLogsExtra = []) => {
+      stopTimers();
+      const failLogs = [...logsRef.current, ...failLogsExtra, log(`Build failed: ${message || "unknown error"}`)];
+      setArtifactError(true);
+      setLogs(failLogs);
+    };
 
     try {
+      // 1. Trigger the cloud build. The backend dispatches a GitHub Actions
+      //    workflow and responds immediately with a buildId.
+      setLogs((prev) => [...prev, log("Triggering cloud build (GitHub Actions)...")]);
+
       const data = await generateApk({
         appName: p.name,
         website: p.website_url,
         packageName: p.package_name || `com.appforge.${(p.name || "app").replace(/[^a-z0-9]/gi, "_").toLowerCase()}`,
         version: p.version || "1.0.0",
         iconUrl: p.app_icon,
+        user_email: user?.email,
       });
-      clearInterval(stepTimer);
-      const downloadUrl = data.downloadUrl;
-      const apkSize = data?.apkSize || data?.size || data?.fileSize || 0;
-      const successLogs = [...logsRef.current, log("Finishing..."), log("Build completed successfully! 🎉")];
-      setLogs(successLogs);
-      setProgress(100);
-      setCurrentStep(BUILD_STEPS.length - 1);
-      setCompleted(true);
-      setApkReady(true);
-      setArtifactError(false);
-      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ["#4F7CFF", "#7C3AED", "#22C55E", "#F59E0B"] });
-      await base44.entities.Project.update(id, {
-        status: "completed",
-        build_progress: 100,
-        apk_url: downloadUrl,
-        ...(apkSize > 0 ? { apk_size: apkSize } : {}),
-      }).catch(() => {});
-      setProject((prev) => ({ ...prev, apk_url: downloadUrl, status: "completed", ...(apkSize > 0 ? { apk_size: apkSize } : {}) }));
-      // Record build in Supabase (build tracking only)
-      createBuildRecord({
-        build_id: data?.buildId || id,
-        user_email: user?.email || user?.id || 'anonymous@example.com',
+
+      const buildId = data.buildId;
+      if (!buildId) throw new Error("Backend did not return a buildId");
+
+      setLogs((prev) => [
+        ...prev,
+        log(`Cloud build queued: ${buildId}`),
+        log("Waiting for the build to finish — polling status..."),
+      ]);
+
+      // 2. Write the processing record to Supabase so the UI, dashboards,
+      //    and the GitHub Action can all track the same row.
+      await createBuildRecord({
+        build_id: buildId,
+        user_email: user?.email || user?.id || "anonymous@example.com",
         website_url: p.website_url,
         app_name: p.name,
         package_name: p.package_name,
-        version: p.version || '1.0.0',
-        build_status: 'completed',
-        r2_file_path: data?.r2FilePath || null,
-        build_duration: (Date.now() - startedAt) / 1000,
-        build_logs: successLogs.map((l) => `[${l.time}] ${l.msg}`).join('\n'),
+        version: p.version || "1.0.0",
+        build_status: "processing",
       }).catch(() => {});
+
+      // 3. Poll Supabase for the status flip.
+      pollTimer = setInterval(async () => {
+        try {
+          if (Date.now() - startedAt > MAX_WAIT_MS) {
+            onFailed("Timed out waiting for the cloud build status.");
+            return;
+          }
+
+          const b = await getBuildFromSupabase(buildId);
+          if (!b) return; // row not visible yet — keep polling
+
+          if (b.status === "completed") {
+            stopTimers();
+            const downloadUrl = `${backendUrl}/download/${buildId}`;
+            const successLogs = [...logsRef.current, log("Finishing..."), log("Build completed successfully! 🎉")];
+            setLogs(successLogs);
+            setProgress(100);
+            setCurrentStep(BUILD_STEPS.length - 1);
+            setCompleted(true);
+            setApkReady(true);
+            setArtifactError(false);
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ["#4F7CFF", "#7C3AED", "#22C55E", "#F59E0B"] });
+            await base44.entities.Project.update(id, {
+              status: "completed",
+              build_progress: 100,
+              apk_url: downloadUrl,
+            }).catch(() => {});
+            setProject((prev) => ({ ...prev, apk_url: downloadUrl, status: "completed" }));
+          } else if (b.status === "failed") {
+            onFailed(b.error_message || "The cloud build reported a failure.");
+            await updateBuildRecord(buildId, "failed", {
+              build_duration: (Date.now() - startedAt) / 1000,
+              build_logs: logsRef.current.map((l) => `[${l.time}] ${l.msg}`).join("\n"),
+            }).catch(() => {});
+          }
+          // status === "processing" → keep polling
+        } catch {
+          // transient poll errors are ignored; next tick retries
+        }
+      }, POLL_MS);
     } catch (e) {
-      clearInterval(stepTimer);
-      const failLogs = [...logsRef.current, log(`Build failed: ${e.message || "unknown error"}`)];
-      setArtifactError(true);
-      setLogs(failLogs);
-      // Record failed build in Supabase
-      createBuildRecord({
-        build_id: id,
-        user_email: user?.email || user?.id || 'anonymous@example.com',
-        website_url: p.website_url,
-        app_name: p.name,
-        package_name: p.package_name,
-        version: p.version || '1.0.0',
-        build_status: 'failed',
+      onFailed(e.message || "unknown error");
+      // Mark the Supabase row failed too, if one was created
+      updateBuildRecord(id, "failed", {
         build_duration: (Date.now() - startedAt) / 1000,
-        build_logs: failLogs.map((l) => `[${l.time}] ${l.msg}`).join('\n'),
-        r2_file_path: null,
+        build_logs: logsRef.current.map((l) => `[${l.time}] ${l.msg}`).join("\n"),
       }).catch(() => {});
     }
   };

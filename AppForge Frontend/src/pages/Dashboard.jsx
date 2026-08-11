@@ -62,10 +62,18 @@ export default function Dashboard() {
         setUser(u);
         setProjects(p);
         setBuilds(b);
-        if (isSuperAdmin(u)) navigate("/super-admin", { replace: true });
+        // Superadmin redirect moved to separate useEffect to avoid race conditions
       })
       .finally(() => setLoading(false));
   }, []);
+
+  // Handle superadmin redirect in a separate effect to avoid race conditions
+  useEffect(() => {
+    if (user && isSuperAdmin(user)) {
+      // Only redirect if this is explicitly the superadmin account
+      navigate("/super-admin", { replace: true });
+    }
+  }, [user, navigate]);
 
   const totalApps = projects.length;
   const totalBuilds = builds.length;
