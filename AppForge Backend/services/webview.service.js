@@ -196,6 +196,8 @@ async function updateLayoutForPullToRefresh(buildFolder, packageName) {
         /<WebView([^>]*)\/>/,
         (match, attrs) => {
             return `<androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
         android:id="@+id/swipeRefreshLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
@@ -209,6 +211,8 @@ async function updateLayoutForPullToRefresh(buildFolder, packageName) {
         /<WebView([^>]*)>([\s\S]*?)<\/WebView>/,
         (match, attrs, content) => {
             return `<androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
         android:id="@+id/swipeRefreshLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
